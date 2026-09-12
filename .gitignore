@@ -1,0 +1,6 @@
+/playlist-linter
+/bin/
+*.exe
+*.test
+*.out
+.DS_Store
