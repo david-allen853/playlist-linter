@@ -98,6 +98,26 @@ func TestLint(t *testing.T) {
 			input: "#EXTM3U\n\ntrack.mp3\n\n\nother.mp3\n",
 			want:  nil,
 		},
+		{
+			name:  "trailing whitespace on a path line",
+			input: "#EXTM3U\ntrack.mp3 \n",
+			want:  []want{{2, SeverityWarning, "trailing-whitespace"}},
+		},
+		{
+			name:  "trailing tab on a path line",
+			input: "#EXTM3U\ntrack.mp3\t\n",
+			want:  []want{{2, SeverityWarning, "trailing-whitespace"}},
+		},
+		{
+			name:  "backslash path",
+			input: "#EXTM3U\nsongs\\track.mp3\n",
+			want:  []want{{2, SeverityWarning, "backslash-path"}},
+		},
+		{
+			name:  "backslash path is not flagged for URLs",
+			input: "#EXTM3U\nhttp://example.com/a\\b\n",
+			want:  nil,
+		},
 	}
 
 	for _, tt := range tests {

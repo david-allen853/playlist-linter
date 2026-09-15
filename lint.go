@@ -115,7 +115,7 @@ func Lint(r io.Reader) ([]Finding, error) {
 			continue
 		}
 
-		findings = append(findings, checkPath(trimmed, lineNum, seen)...)
+		findings = append(findings, checkPath(line, trimmed, lineNum, seen)...)
 		pendingExtinf = 0
 	}
 
@@ -174,9 +174,20 @@ func checkExtinf(rest string, lineNum int) (Finding, bool) {
 }
 
 // checkPath validates a track entry: a URL or a filesystem path pointing
-// at the audio file itself.
-func checkPath(path string, lineNum int, seen map[string]int) []Finding {
+// at the audio file itself. raw is the line as it appeared in the file
+// (used for whitespace checks); path is the already-trimmed entry used
+// for lookups and comparisons.
+func checkPath(raw, path string, lineNum int, seen map[string]int) []Finding {
 	var findings []Finding
+
+	if strings.TrimRight(raw, " \t") != raw {
+		findings = append(findings, Finding{
+			Line:     lineNum,
+			Severity: SeverityWarning,
+			Rule:     "trailing-whitespace",
+			Message:  "line has trailing whitespace, which some players treat as part of the path",
+		})
+	}
 
 	if firstLine, ok := seen[path]; ok {
 		findings = append(findings, Finding{
@@ -192,6 +203,15 @@ func checkPath(path string, lineNum int, seen map[string]int) []Finding {
 	lower := strings.ToLower(path)
 	isURL := strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://")
 	if !isURL {
+		if strings.Contains(path, "\\") {
+			findings = append(findings, Finding{
+				Line:     lineNum,
+				Severity: SeverityWarning,
+				Rule:     "backslash-path",
+				Message:  fmt.Sprintf("%q uses backslashes; players on non-Windows platforms won't resolve them", path),
+			})
+		}
+
 		ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(path), "."))
 		if !knownExtensions[ext] {
 			findings = append(findings, Finding{

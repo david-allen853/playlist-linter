@@ -49,6 +49,11 @@ Exit status is 1 if any finding is an error, 2 if a file couldn't be read,
 - `unknown-extension` - a local path's extension isn't a recognized audio
   format. URLs are exempt, since query strings and streaming endpoints
   don't always end in a file extension.
+- `trailing-whitespace` - a track line has trailing spaces or tabs. Some
+  players include that whitespace literally when resolving the path, so
+  the file "exists" but never plays.
+- `backslash-path` - a local path uses backslashes. That's a Windows path
+  separator; most other players won't resolve it. URLs are exempt.
 
 ## Multiple files
 
