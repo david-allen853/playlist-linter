@@ -146,6 +146,79 @@ func Lint(r io.Reader) ([]Finding, error) {
 	return findings, nil
 }
 
+// Fix removes duplicate track entries from a playlist, keeping the first
+// occurrence of each path and its metadata lines (#EXTINF and similar) and
+// dropping the metadata and path of every later repeat. It returns the
+// fixed content, the number of duplicate entries removed, and preserves
+// the original line-ending style and trailing-newline presence so a diff
+// against the source shows only the removed lines.
+func Fix(r io.Reader) (string, int, error) {
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return "", 0, err
+	}
+	content := string(data)
+
+	nl := "\n"
+	if strings.Contains(content, "\r\n") {
+		nl = "\r\n"
+	}
+
+	trailingNewline := strings.HasSuffix(content, "\n")
+	lines := strings.Split(content, "\n")
+	if trailingNewline {
+		lines = lines[:len(lines)-1]
+	}
+	for i, l := range lines {
+		lines[i] = strings.TrimSuffix(l, "\r")
+	}
+
+	var out []string
+	var pendingMeta []string
+	seen := map[string]bool{}
+	removed := 0
+
+	for i, line := range lines {
+		if i == 0 {
+			line = strings.TrimPrefix(line, "﻿")
+		}
+		trimmed := strings.TrimSpace(line)
+
+		if trimmed == "" {
+			out = append(out, line)
+			continue
+		}
+
+		if i == 0 && trimmed == "#EXTM3U" {
+			out = append(out, line)
+			continue
+		}
+
+		if strings.HasPrefix(trimmed, "#") {
+			pendingMeta = append(pendingMeta, line)
+			continue
+		}
+
+		if seen[trimmed] {
+			pendingMeta = nil
+			removed++
+			continue
+		}
+		seen[trimmed] = true
+		out = append(out, pendingMeta...)
+		out = append(out, line)
+		pendingMeta = nil
+	}
+	out = append(out, pendingMeta...)
+
+	fixed := strings.Join(out, nl)
+	if trailingNewline && len(out) > 0 {
+		fixed += nl
+	}
+
+	return fixed, removed, nil
+}
+
 // checkExtinf validates the duration field of an #EXTINF line. A duration
 // of -1 is a documented sentinel for "unknown length" (live streams) and
 // is not an error; anything else negative or non-numeric is.

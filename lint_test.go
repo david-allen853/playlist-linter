@@ -141,3 +141,58 @@ func TestLint(t *testing.T) {
 		})
 	}
 }
+
+func TestFix(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    string
+		removed int
+	}{
+		{
+			name:    "no duplicates leaves content untouched",
+			input:   "#EXTM3U\ntrack.mp3\nother.mp3\n",
+			want:    "#EXTM3U\ntrack.mp3\nother.mp3\n",
+			removed: 0,
+		},
+		{
+			name:    "duplicate track and its EXTINF are removed",
+			input:   "#EXTM3U\n#EXTINF:100,A\ntrack.mp3\n#EXTINF:100,A\ntrack.mp3\n",
+			want:    "#EXTM3U\n#EXTINF:100,A\ntrack.mp3\n",
+			removed: 1,
+		},
+		{
+			name:    "CRLF line endings are preserved",
+			input:   "#EXTM3U\r\ntrack.mp3\r\ntrack.mp3\r\n",
+			want:    "#EXTM3U\r\ntrack.mp3\r\n",
+			removed: 1,
+		},
+		{
+			name:    "missing trailing newline is preserved",
+			input:   "#EXTM3U\ntrack.mp3\ntrack.mp3",
+			want:    "#EXTM3U\ntrack.mp3",
+			removed: 1,
+		},
+		{
+			name:    "later duplicates of an earlier duplicate are all removed",
+			input:   "#EXTM3U\ntrack.mp3\ntrack.mp3\ntrack.mp3\n",
+			want:    "#EXTM3U\ntrack.mp3\n",
+			removed: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, removed, err := Fix(strings.NewReader(tt.input))
+			if err != nil {
+				t.Fatalf("Fix returned an error: %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("got fixed content %q, want %q", got, tt.want)
+			}
+			if removed != tt.removed {
+				t.Errorf("got %d removed, want %d", removed, tt.removed)
+			}
+		})
+	}
+}
