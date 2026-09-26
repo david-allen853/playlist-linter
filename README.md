@@ -38,6 +38,27 @@ mytape.m3u:7: warning unknown-extension: "cover.jpg" does not look like an audio
 Exit status is 1 if any finding is an error, 2 if a file couldn't be read,
 0 otherwise.
 
+Pass `-json` to get findings as a JSON array instead, one object per file:
+
+```
+./playlint -json mytape.m3u
+```
+
+```json
+[
+  {
+    "file": "mytape.m3u",
+    "findings": [
+      { "line": 1, "severity": "warning", "rule": "missing-header", "message": "playlist does not start with #EXTM3U" },
+      { "line": 3, "severity": "error", "rule": "bad-duration", "message": "duration \"abc\" is not a number" }
+    ]
+  }
+]
+```
+
+This is meant for editor integrations that want to turn findings into
+inline diagnostics rather than parse the plain-text output.
+
 ## Rules
 
 - `missing-header` - the file doesn't start with `#EXTM3U`.

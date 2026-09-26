@@ -3,6 +3,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -30,13 +31,20 @@ func (s Severity) String() string {
 	}
 }
 
+// MarshalJSON renders a Severity as its string form ("error", "warning")
+// rather than the underlying int, so JSON consumers don't have to know
+// the iota ordering.
+func (s Severity) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.String())
+}
+
 // Finding is a single problem reported by the linter, anchored to a line
 // number in the source playlist so a reader can jump straight to it.
 type Finding struct {
-	Line     int
-	Severity Severity
-	Rule     string
-	Message  string
+	Line     int      `json:"line"`
+	Severity Severity `json:"severity"`
+	Rule     string   `json:"rule"`
+	Message  string   `json:"message"`
 }
 
 // knownExtensions holds file extensions (without the leading dot, lower
